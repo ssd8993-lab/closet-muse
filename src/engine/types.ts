@@ -13,6 +13,8 @@ export interface DayContext {
   formality: Formality[]
   dayTypeId: string
   dayLabel: string
+  /** Calendar date, YYYY-MM-DD (used to name saved images). */
+  date?: string
   temp: number
   /** Plain-words sky, for example "rain" or "partly cloudy". */
   sky: string

@@ -134,7 +134,7 @@ function pickTop(cands: Candidate[], rng: () => number, k = 4): Candidate | unde
 function chooseThree(cands: Candidate[], rng: () => number): { kind: Kind; c: Candidate }[] {
   const chosen: { kind: Kind; c: Candidate }[] = []
   const distinct = (c: Candidate, strict: boolean) =>
-    chosen.every(({ c: x }) => !overlaps(c.pieces, x.pieces, strict ? [...MAIN_ROLES, 'coat', 'shoes'] : MAIN_ROLES))
+    chosen.every(({ c: x }) => !overlaps(c.pieces, x.pieces, strict ? [...MAIN_ROLES, 'coat', 'light', 'shoes'] : MAIN_ROLES))
 
   const choose = (kind: Kind, rank: (c: Candidate) => number, filter: (c: Candidate) => boolean) => {
     for (const strict of [true, false]) {

@@ -192,3 +192,6 @@ html, body {
 .when { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
 .when strong { color: var(--ink); }
 .thumb .placeholder { font-size: 14px; }
+.flatlay { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
+.flatlay .chip { text-decoration: none; }
+.flatlay-img { display: block; width: 100%; height: auto; margin-top: 8px; border: 1px solid var(--line); }

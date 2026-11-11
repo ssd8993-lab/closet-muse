@@ -36,7 +36,7 @@ export default function Today() {
   const ctx: DayContext | null = useMemo(
     () => dt ? {
       warmth: summary.warmth, rainLikely: summary.rainLikely, windy: summary.windy, formality: dt.formality,
-      dayTypeId: dt.id, dayLabel: dayLabel(day.date, selected), temp: day.high,
+      dayTypeId: dt.id, dayLabel: dayLabel(day.date, selected), date: day.date, temp: day.high,
       sky: day.typical ? 'typical for the month' : weatherLabel(day.code).toLowerCase(),
     } : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
