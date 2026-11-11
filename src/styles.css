@@ -178,3 +178,17 @@ html, body {
 .facts dt { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
 .facts dd { margin: 2px 0 0; font-size: 15px; }
 .advice { margin: 14px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+
+/* outfits */
+.outfit-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.outfits { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.outfit { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.outfit-title { margin: 0; font-family: var(--serif); font-size: 18px; font-weight: 600; white-space: pre-wrap; }
+.kind { margin: 2px 0 10px; font-size: 12px; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.thumb { aspect-ratio: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg); border-radius: 8px; padding: 4px; }
+.thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.items { margin: 0 0 10px; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+.when { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.when strong { color: var(--ink); }
+.thumb .placeholder { font-size: 14px; }

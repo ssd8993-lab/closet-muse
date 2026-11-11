@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { DAY_TYPES } from './dayTypes'
+import Outfits from './Outfits'
+import type { DayContext } from './engine/index'
 import { useForecast } from './useForecast'
 import { BOSTON, summarize, typicalForecast, weatherLabel, type DayForecast } from './weather'
 
@@ -30,7 +32,16 @@ export default function Today() {
   )
   const day = days[Math.min(selected, days.length - 1)]
   const summary = summarize(day)
-  const dayTypeLabel = DAY_TYPES.find((d) => d.id === dayType)?.label
+  const dt = DAY_TYPES.find((d) => d.id === dayType)
+  const ctx: DayContext | null = useMemo(
+    () => dt ? {
+      warmth: summary.warmth, rainLikely: summary.rainLikely, windy: summary.windy, formality: dt.formality,
+      dayTypeId: dt.id, dayLabel: dayLabel(day.date, selected), temp: day.high,
+      sky: day.typical ? 'typical for the month' : weatherLabel(day.code).toLowerCase(),
+    } : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dt, summary.warmth, summary.rainLikely, summary.windy, day.date, day.high, day.code, day.typical, selected],
+  )
 
   return (
     <section aria-labelledby="today-heading">
@@ -90,11 +101,7 @@ export default function Today() {
             ))}
           </div>
 
-          <p className="notice">
-            {dayTypeLabel
-              ? `${dayTypeLabel}, warmth ${summary.warmth}${summary.rainLikely ? ', rain-safe only' : ''}. Outfits are the next piece to build.`
-              : 'Pick a kind of day. Outfits are the next piece to build.'}
-          </p>
+          {dayType ? <Outfits ctx={ctx!} /> : <p className="notice">Pick a kind of day to see outfits.</p>}
         </>
       )}
     </section>
