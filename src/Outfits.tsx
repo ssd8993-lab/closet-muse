@@ -1,46 +1,88 @@
-import { useEffect, useMemo, useState } from 'react'
-import { buildOutfits, piecesOf, type DayContext } from './engine/index'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { alternatives, buildOutfits, piecesOf, restyle, ROLE_ORDER, type DayContext, type OutfitPieces } from './engine/index'
 import { cutoutUrl, useCloset } from './useCloset'
 import type { Piece } from './types'
 import { DAY_TYPES } from './dayTypes'
 import { flatlayFilename, renderFlatlay } from './flatlay'
+import { wornMap, type WearEntry } from './wearLog'
 
 const KIND = { easy: 'Easy go-to', fresh: 'Fresh pairing', bold: 'Bold stretch' } as const
+const ROLE_NAME: Record<keyof OutfitPieces, string> = {
+  coat: 'coat', light: 'light layer', top: 'top', onepiece: 'dress or one-piece', bottom: 'bottoms',
+  legwear: 'tights', shoes: 'shoes', bag: 'bag', accessory: 'belt',
+}
 
-export default function Outfits({ ctx }: { ctx: DayContext }) {
+function localIso(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+interface Props {
+  ctx: DayContext
+  log: WearEntry[]
+  onWear: (e: Omit<WearEntry, 'id'>) => void
+}
+
+export default function Outfits({ ctx, log, onWear }: Props) {
   const { pieces, error } = useCloset()
   const [shuffle, setShuffle] = useState(0)
+  const [swaps, setSwaps] = useState<Record<string, OutfitPieces>>({})
+  const [picker, setPicker] = useState<{ id: string; role: keyof OutfitPieces } | null>(null)
   const [image, setImage] = useState<{ url: string; name: string } | null>(null)
   const [busy, setBusy] = useState(false)
-  const seed = `${ctx.dayLabel}|${ctx.dayTypeId}|${ctx.warmth}|${ctx.rainLikely}|${shuffle}`
-  const result = useMemo(() => (pieces ? buildOutfits({ pieces, ctx, seed }) : null), [pieces, ctx, seed])
 
-  // a new set of outfits makes any old picture stale
-  const setKey = result ? result.outfits.map((o) => o.title + o.score).join('|') : ''
+  // The wear log shapes new suggestions, but logging an outfit must not reshuffle the ones on screen.
+  const logRef = useRef(log)
+  logRef.current = log
+  const today = localIso()
+  const seed = `${ctx.dayLabel}|${ctx.dayTypeId}|${ctx.warmth}|${ctx.rainLikely}|${shuffle}`
+  const result = useMemo(
+    () => (pieces ? buildOutfits({ pieces, ctx, seed, worn: wornMap(logRef.current), today }) : null),
+    [pieces, ctx, seed, today],
+  )
+
+  useEffect(() => {
+    setSwaps({})
+    setPicker(null)
+  }, [result])
+
+  const outfits = useMemo(
+    () => (result ? result.outfits.map((o) => (swaps[o.id] ? restyle(o, swaps[o.id], ctx) : o)) : []),
+    [result, swaps, ctx],
+  )
+  const setKey = outfits.map((o) => piecesOf(o.pieces).map((p) => p.code).join('.')).join('|')
   useEffect(() => setImage(null), [setKey])
 
+  const options = useMemo(
+    () => (picker && pieces ? alternatives(outfits.find((o) => o.id === picker.id)!.pieces, picker.role, pieces, ctx, wornMap(log), today) : []),
+    [picker, pieces, outfits, ctx, log, today],
+  )
+
+  const occasion = DAY_TYPES.find((d) => d.id === ctx.dayTypeId)?.label ?? 'Outfits'
+  const wearDate = ctx.date ?? today
+
   async function makeImage() {
-    if (!result) return
     setBusy(true)
-    const occasion = DAY_TYPES.find((d) => d.id === ctx.dayTypeId)?.label ?? 'Outfits'
-    const title = `${occasion}, ${ctx.temp}° ${ctx.sky} — ${result.outfits.length} options`
-    const canvas = await renderFlatlay(result.outfits, title, cutoutUrl)
-    const name = flatlayFilename(ctx.date ?? new Date().toISOString().slice(0, 10), occasion, result.outfits.length)
-    setImage({ url: canvas.toDataURL('image/png'), name })
+    const title = `${occasion}, ${ctx.temp}° ${ctx.sky} — ${outfits.length} options`
+    const canvas = await renderFlatlay(outfits, title, cutoutUrl)
+    setImage({ url: canvas.toDataURL('image/png'), name: flatlayFilename(wearDate, occasion, outfits.length) })
     setBusy(false)
   }
 
   if (error) return <p className="notice">{error}</p>
   if (!result) return <p className="notice">Loading your closet…</p>
 
+  const wornCodes = (o: { pieces: OutfitPieces }) => piecesOf(o.pieces).map((p) => p.code)
+  const isWorn = (o: { pieces: OutfitPieces }) =>
+    log.some((e) => e.id === `${wearDate}|${ctx.dayTypeId}` && e.codes.join() === wornCodes(o).join())
+
   return (
     <div>
       <div className="outfit-head">
-        <h3 className="sub-heading">Your {result.outfits.length} options</h3>
+        <h3 className="sub-heading">Your {outfits.length} options</h3>
         <button className="chip" onClick={() => setShuffle((n) => n + 1)}>Shuffle</button>
       </div>
       <div className="outfits">
-        {result.outfits.map((o) => (
+        {outfits.map((o) => (
           <article key={o.id} className="outfit">
             <h4 className="outfit-title">{o.id}  {o.title} · {o.mood}</h4>
             <p className="kind">{KIND[o.kind]}</p>
@@ -55,14 +97,58 @@ export default function Outfits({ ctx }: { ctx: DayContext }) {
               })}
             </div>
             <ul className="items">
-              {piecesOf(o.pieces).map((p: Piece) => <li key={p.code}>{p.item} ({p.code})</li>)}
+              {ROLE_ORDER.filter((r) => o.pieces[r]).map((r) => {
+                const p = o.pieces[r]!
+                const open = picker?.id === o.id && picker.role === r
+                return (
+                  <li key={r}>
+                    <span>{p.item} ({p.code})</span>
+                    <button
+                      className="swap"
+                      aria-expanded={open}
+                      aria-label={`Swap ${ROLE_NAME[r]} in option ${o.id}`}
+                      onClick={() => setPicker(open ? null : { id: o.id, role: r })}
+                    >
+                      Swap
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
+            {picker?.id === o.id && (
+              <div className="picker" role="group" aria-label={`Other ${ROLE_NAME[picker.role]} options`}>
+                {options.length === 0 && <p className="notice">No other {ROLE_NAME[picker.role]} fits the rules for this day.</p>}
+                {options.map((p) => {
+                  const url = cutoutUrl(p)
+                  return (
+                    <button
+                      key={p.code}
+                      className="alt"
+                      title={`${p.item} (${p.code})`}
+                      onClick={() => {
+                        setSwaps((s) => ({ ...s, [o.id]: { ...o.pieces, [picker.role]: p } }))
+                        setPicker(null)
+                      }}
+                    >
+                      <span className="thumb">{url ? <img src={url} alt="" loading="lazy" /> : <span className="placeholder">{p.code}</span>}</span>
+                      <span className="alt-name">{p.item}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             <p className="when"><strong>When to wear:</strong> {o.note}</p>
+            <button
+              className={isWorn(o) ? 'chip on' : 'chip'}
+              onClick={() => onWear({ date: wearDate, dayTypeId: ctx.dayTypeId, title: `${o.title} · ${o.mood}`, codes: wornCodes(o) })}
+            >
+              {isWorn(o) ? 'Logged ✓' : 'I wore this'}
+            </button>
           </article>
         ))}
       </div>
       <div className="flatlay">
-        <button className="chip" onClick={makeImage} disabled={busy || !result.outfits.length}>
+        <button className="chip" onClick={makeImage} disabled={busy || !outfits.length}>
           {busy ? 'Making picture…' : 'Make flat-lay picture'}
         </button>
         {image && (

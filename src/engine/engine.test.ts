@@ -69,3 +69,33 @@ test('real closet: every day type x warmth x rain gives valid, distinct outfits'
   }
   console.log(report.join('\n') || 'all scenarios gave 3 outfits')
 })
+
+import { alternatives, freshness, restyle } from './compose.ts'
+
+test('alternatives keep every rule and never repeat a piece in the outfit', { skip: !existsSync('public/closet-data/closet.json') }, () => {
+  const pieces: Piece[] = JSON.parse(readFileSync('public/closet-data/closet.json', 'utf8')).pieces
+  const codes = new Set(pieces.map((p) => p.code))
+  const ctx = ctxFor('errands', ['casual'], 3, true)
+  const [first] = buildOutfits({ pieces, ctx, seed: 'swap' }).outfits
+  let checked = 0
+  for (const role of Object.keys(first.pieces) as (keyof typeof first.pieces)[]) {
+    const have = new Set(piecesOf(first.pieces).map((p) => p.code))
+    for (const alt of alternatives(first.pieces, role, pieces, ctx)) {
+      assert.ok(!have.has(alt.code))
+      assert.deepEqual(validateOutfit({ ...first.pieces, [role]: alt }, ctx, codes).errors, [], `${role} ${alt.code}`)
+      checked++
+    }
+  }
+  assert.ok(checked > 0)
+  const swapped = restyle(first, { ...first.pieces, shoes: alternatives(first.pieces, 'shoes', pieces, ctx)[0] ?? first.pieces.shoes }, ctx)
+  assert.equal(swapped.id, first.id)
+})
+
+test('freshness penalizes recent wear and rewards forgotten pieces', () => {
+  const top = mk({}), bottom = mk({ slot: 'bottom', category: 'Bottoms' }), shoes = mk({ slot: 'shoes', category: 'Shoes' })
+  const o = { top, bottom, shoes }
+  const today = '2026-11-11'
+  assert.equal(freshness(o, undefined, today), 0)
+  assert.ok(freshness(o, { [top.code]: '2026-11-09' }, today) < freshness(o, {}, today))
+  assert.ok(freshness(o, { [top.code]: '2026-08-01', [bottom.code]: '2026-08-01' }, today) > 0)
+})

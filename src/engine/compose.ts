@@ -29,6 +29,36 @@ export function rngFrom(seed: number): () => number {
 
 const pick = <T,>(arr: T[], rng: () => number): T => arr[Math.floor(rng() * arr.length)]
 
+// ---------- wear history ----------
+
+/** Last worn date (YYYY-MM-DD) by piece code. */
+export type WornMap = Record<string, string>
+
+const DAY_MS = 86400000
+const FRESH_ROLES: (keyof OutfitPieces)[] = ['coat', 'light', 'top', 'onepiece', 'bottom', 'shoes', 'bag']
+
+/** Gentle nudge: avoid what was worn lately, bring back what has been forgotten. */
+export function freshness(o: OutfitPieces, worn: WornMap | undefined, today: string | undefined): number {
+  if (!worn || !today) return 0
+  const now = Date.parse(`${today}T12:00:00Z`)
+  let s = 0
+  for (const role of FRESH_ROLES) {
+    const p = o[role]
+    if (!p) continue
+    const last = worn[p.code]
+    if (!last) {
+      if (role === 'top' || role === 'onepiece' || role === 'bottom') s += 0.5
+      continue
+    }
+    const days = (now - Date.parse(`${last}T12:00:00Z`)) / DAY_MS
+    if (days < 0) continue
+    if (days < 7) s -= 1.5
+    else if (days < 14) s -= 0.7
+    else if (days > 60 && (role === 'top' || role === 'onepiece' || role === 'bottom')) s += 0.5
+  }
+  return s
+}
+
 // ---------- pools ----------
 
 type Pools = Record<Role, Piece[]>
@@ -94,7 +124,7 @@ interface Candidate {
   key: string
 }
 
-function generate(pieces: Piece[], ctx: DayContext, rng: () => number, relaxFormality: boolean, closetCodes?: Set<string>): Candidate[] {
+function generate(pieces: Piece[], ctx: DayContext, rng: () => number, relaxFormality: boolean, closetCodes?: Set<string>, worn?: WornMap, today?: string): Candidate[] {
   const pools = buildPools(pieces, ctx, relaxFormality)
   const seen = new Set<string>()
   const out: Candidate[] = []
@@ -106,7 +136,7 @@ function generate(pieces: Piece[], ctx: DayContext, rng: () => number, relaxForm
     if (seen.has(key)) continue
     seen.add(key)
     const st = scoreOutfit(o, ctx)
-    let score = st.score
+    let score = st.score + freshness(o, worn, today)
     if (o.accessory) {
       const fam = colorFamily(o.accessory)
       score += fam === colorFamily(o.shoes!) || (o.bag && fam === colorFamily(o.bag)) ? 1 : -1
@@ -191,16 +221,20 @@ export interface BuildInput {
   ctx: DayContext
   /** Same seed gives the same outfits; change it to shuffle. */
   seed: string
+  /** When each piece was last worn, to avoid repeats and revive forgotten pieces. */
+  worn?: WornMap
+  /** Today's date, YYYY-MM-DD; needed with `worn`. */
+  today?: string
 }
 
-export function buildOutfits({ pieces, ctx, seed }: BuildInput): EngineResult {
+export function buildOutfits({ pieces, ctx, seed, worn, today }: BuildInput): EngineResult {
   const rng = rngFrom(hashSeed(seed))
   const codes = new Set(pieces.map((p) => p.code))
   const gaps: string[] = []
 
-  let cands = generate(pieces, ctx, rng, false, codes)
+  let cands = generate(pieces, ctx, rng, false, codes, worn, today)
   if (cands.length < 6) {
-    const relaxed = generate(pieces, ctx, rng, true, codes)
+    const relaxed = generate(pieces, ctx, rng, true, codes, worn, today)
     if (relaxed.length > cands.length) {
       cands = relaxed
       gaps.push(`Few pieces are marked ${ctx.formality.join(' or ')} for this kind of day, so some outfits go a little more or less dressed.`)
@@ -233,4 +267,42 @@ function explainGaps(pieces: Piece[], ctx: DayContext, built: number): string[] 
   if (ctx.warmth === 3 && pools.coat.length < 3) out.push('Gap: warm coats that fit over knitwear.')
   if (pools.top.length < 3 || pools.bottom.length < 3) out.push('Gap: tops or bottoms that suit this kind of day in this weather.')
   return out
+}
+
+// ---------- swap ----------
+
+/** Rebuild an outfit's words and score after a piece changes. */
+export function restyle(o: Outfit, pieces: OutfitPieces, ctx: DayContext): Outfit {
+  return {
+    ...o,
+    pieces,
+    title: titleOf(pieces),
+    mood: moodOf(piecesOf(pieces), ctx),
+    note: noteOf(pieces, o.kind, ctx),
+    score: Math.round(scoreOutfit(pieces, ctx).score * 10) / 10,
+  }
+}
+
+/** Other pieces that can replace the one in `role` and still follow every rule, best first. */
+export function alternatives(
+  current: OutfitPieces,
+  role: keyof OutfitPieces,
+  pieces: Piece[],
+  ctx: DayContext,
+  worn?: WornMap,
+  today?: string,
+  limit = 12,
+): Piece[] {
+  const now = current[role]
+  if (!now) return []
+  const inUse = new Set(piecesOf(current).map((p) => p.code))
+  const codes = new Set(pieces.map((p) => p.code))
+  const ranked: { p: Piece; score: number }[] = []
+  for (const p of pieces) {
+    if (inUse.has(p.code) || roleOf(p) !== role || !allowed(p, role, ctx)) continue
+    const next = { ...current, [role]: p }
+    if (validateOutfit(next, ctx, codes).errors.length) continue
+    ranked.push({ p, score: scoreOutfit(next, ctx).score + freshness(next, worn, today) })
+  }
+  return ranked.sort((a, b) => b.score - a.score).slice(0, limit).map((r) => r.p)
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { DAY_TYPES } from './dayTypes'
 import Outfits from './Outfits'
+import type { WearEntry } from './wearLog'
 import type { DayContext } from './engine/index'
 import { useForecast } from './useForecast'
 import { BOSTON, summarize, typicalForecast, weatherLabel, type DayForecast } from './weather'
@@ -18,7 +19,7 @@ function dayLabel(date: string, index: number): string {
   return new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-export default function Today() {
+export default function Today({ log, onWear }: { log: WearEntry[]; onWear: (e: Omit<WearEntry, 'id'>) => void }) {
   const forecast = useForecast()
   const [selected, setSelected] = useState(0)
   const [dayType, setDayType] = useState<string | null>(null)
@@ -101,7 +102,7 @@ export default function Today() {
             ))}
           </div>
 
-          {dayType ? <Outfits ctx={ctx!} /> : <p className="notice">Pick a kind of day to see outfits.</p>}
+          {dayType ? <Outfits ctx={ctx!} log={log} onWear={onWear} /> : <p className="notice">Pick a kind of day to see outfits.</p>}
         </>
       )}
     </section>
