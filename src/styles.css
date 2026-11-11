@@ -25,7 +25,7 @@ html, body {
 }
 
 .top h1 {
-  margin: 0;
+  margin: 0 0 14px;
   font-family: var(--serif);
   font-weight: 600;
   font-size: 34px;
@@ -33,7 +33,7 @@ html, body {
 }
 
 .count {
-  margin: 4px 0 18px;
+  margin: 0 0 16px;
   min-height: 1.2em;
   color: var(--muted);
   font-size: 14px;
@@ -140,3 +140,41 @@ html, body {
   .grid { grid-template-columns: repeat(2, 1fr); }
   .top h1 { font-size: 28px; }
 }
+
+/* navigation and sections */
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.tab {
+  padding: 10px 16px;
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+}
+.tab.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.section { margin: 0 0 6px; font-family: var(--serif); font-weight: 600; font-size: 22px; }
+.sub-heading { margin: 26px 0 10px; font-family: var(--serif); font-weight: 600; font-size: 18px; }
+
+/* weather card */
+.weather {
+  padding: 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  max-width: 560px;
+}
+.temps { display: flex; align-items: baseline; gap: 12px; }
+.temps .big { font-family: var(--serif); font-size: 48px; line-height: 1; }
+.temps .lo { color: var(--muted); }
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px 16px;
+  margin: 14px 0 0;
+}
+.facts dt { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.facts dd { margin: 2px 0 0; font-size: 15px; }
+.advice { margin: 14px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
