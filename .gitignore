@@ -19,3 +19,6 @@ Pieces_cutout/
 # OS and editor files
 .DS_Store
 .vscode/
+
+# imported closet (personal photos and data)
+public/closet-data/

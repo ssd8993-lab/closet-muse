@@ -1,0 +1,25 @@
+{
+  "name": "closet-muse",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Personal AI stylist: weather-aware outfit suggestions and flat-lays built from my own closet.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "import": "node scripts/import-closet.mjs",
+    "test": "node --test scripts/*.test.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}
