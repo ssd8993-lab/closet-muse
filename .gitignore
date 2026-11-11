@@ -1,0 +1,21 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# dependencies and build output
+node_modules/
+dist/
+.next/
+
+# personal closet data and photos stay out of git
+closet-data/
+Closet Inventory.md*
+Pieces/
+Pieces_cutout/
+*.webp
+*.heic
+
+# OS and editor files
+.DS_Store
+.vscode/
