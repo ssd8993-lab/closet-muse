@@ -29,6 +29,15 @@ export function rngFrom(seed: number): () => number {
 
 const pick = <T,>(arr: T[], rng: () => number): T => arr[Math.floor(rng() * arr.length)]
 
+// ---------- ratings ----------
+
+export type Rating = 'like' | 'dislike'
+/** Rating per outfit, keyed by outfitKey(). */
+export type RatingMap = Record<string, Rating>
+
+/** Identity of an outfit: its piece codes, sorted. */
+export const outfitKey = (o: OutfitPieces): string => piecesOf(o).map((p) => p.code).sort().join('-')
+
 // ---------- wear history ----------
 
 /** Last worn date (YYYY-MM-DD) by piece code. */
@@ -124,7 +133,7 @@ interface Candidate {
   key: string
 }
 
-function generate(pieces: Piece[], ctx: DayContext, rng: () => number, relaxFormality: boolean, closetCodes?: Set<string>, worn?: WornMap, today?: string): Candidate[] {
+function generate(pieces: Piece[], ctx: DayContext, rng: () => number, relaxFormality: boolean, closetCodes?: Set<string>, worn?: WornMap, today?: string, ratings?: RatingMap): Candidate[] {
   const pools = buildPools(pieces, ctx, relaxFormality)
   const seen = new Set<string>()
   const out: Candidate[] = []
@@ -132,11 +141,11 @@ function generate(pieces: Piece[], ctx: DayContext, rng: () => number, relaxForm
     const o = sample(pools, ctx, rng)
     if (!o) break
     if (validateOutfit(o, ctx, closetCodes).errors.length) continue
-    const key = piecesOf(o).map((p) => p.code).sort().join('-')
-    if (seen.has(key)) continue
+    const key = outfitKey(o)
+    if (seen.has(key) || ratings?.[key] === 'dislike') continue
     seen.add(key)
     const st = scoreOutfit(o, ctx)
-    let score = st.score + freshness(o, worn, today)
+    let score = st.score + freshness(o, worn, today) + (ratings?.[key] === 'like' ? 2 : 0)
     if (o.accessory) {
       const fam = colorFamily(o.accessory)
       score += fam === colorFamily(o.shoes!) || (o.bag && fam === colorFamily(o.bag)) ? 1 : -1
@@ -225,16 +234,18 @@ export interface BuildInput {
   worn?: WornMap
   /** Today's date, YYYY-MM-DD; needed with `worn`. */
   today?: string
+  /** Outfits Sonal liked (shown more) or disliked (never shown again). */
+  ratings?: RatingMap
 }
 
-export function buildOutfits({ pieces, ctx, seed, worn, today }: BuildInput): EngineResult {
+export function buildOutfits({ pieces, ctx, seed, worn, today, ratings }: BuildInput): EngineResult {
   const rng = rngFrom(hashSeed(seed))
   const codes = new Set(pieces.map((p) => p.code))
   const gaps: string[] = []
 
-  let cands = generate(pieces, ctx, rng, false, codes, worn, today)
+  let cands = generate(pieces, ctx, rng, false, codes, worn, today, ratings)
   if (cands.length < 6) {
-    const relaxed = generate(pieces, ctx, rng, true, codes, worn, today)
+    const relaxed = generate(pieces, ctx, rng, true, codes, worn, today, ratings)
     if (relaxed.length > cands.length) {
       cands = relaxed
       gaps.push(`Few pieces are marked ${ctx.formality.join(' or ')} for this kind of day, so some outfits go a little more or less dressed.`)

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { alternatives, buildOutfits, canRemove, piecesOf, restyle, ROLE_ORDER, type DayContext, type OutfitPieces } from './engine/index'
+import { alternatives, buildOutfits, canRemove, outfitKey, piecesOf, restyle, ROLE_ORDER, type DayContext, type OutfitPieces } from './engine/index'
 import { cutoutUrl, useCloset } from './useCloset'
 import type { Piece } from './types'
 import { DAY_TYPES } from './dayTypes'
 import { flatlayFilename, renderFlatlay } from './flatlay'
 import { wornMap, type WearEntry } from './wearLog'
+import { ratingMap, type RatingEntry } from './ratings'
 
 const KIND = { easy: 'Easy go-to', fresh: 'Fresh pairing', bold: 'Bold stretch' } as const
 const ROLE_NAME: Record<keyof OutfitPieces, string> = {
@@ -20,9 +21,11 @@ interface Props {
   ctx: DayContext
   log: WearEntry[]
   onWear: (e: Omit<WearEntry, 'id'>) => void
+  ratings: RatingEntry[]
+  onRate: (e: RatingEntry) => void
 }
 
-export default function Outfits({ ctx, log, onWear }: Props) {
+export default function Outfits({ ctx, log, onWear, ratings, onRate }: Props) {
   const { pieces, error } = useCloset()
   const [shuffle, setShuffle] = useState(0)
   const [swaps, setSwaps] = useState<Record<string, OutfitPieces>>({})
@@ -33,10 +36,12 @@ export default function Outfits({ ctx, log, onWear }: Props) {
   // The wear log shapes new suggestions, but logging an outfit must not reshuffle the ones on screen.
   const logRef = useRef(log)
   logRef.current = log
+  const ratingsRef = useRef(ratings)
+  ratingsRef.current = ratings
   const today = localIso()
   const seed = `${ctx.dayLabel}|${ctx.dayTypeId}|${ctx.warmth}|${ctx.rainLikely}|${shuffle}`
   const result = useMemo(
-    () => (pieces ? buildOutfits({ pieces, ctx, seed, worn: wornMap(logRef.current), today }) : null),
+    () => (pieces ? buildOutfits({ pieces, ctx, seed, worn: wornMap(logRef.current), today, ratings: ratingMap(ratingsRef.current) }) : null),
     [pieces, ctx, seed, today],
   )
 
@@ -153,12 +158,28 @@ export default function Outfits({ ctx, log, onWear }: Props) {
               </div>
             )}
             <p className="when"><strong>When to wear:</strong> {o.note}</p>
+            <div className="actions">
             <button
               className={isWorn(o) ? 'chip on' : 'chip'}
               onClick={() => onWear({ date: wearDate, dayTypeId: ctx.dayTypeId, title: `${o.title} · ${o.mood}`, codes: wornCodes(o) })}
             >
               {isWorn(o) ? 'Logged ✓' : 'I wore this'}
             </button>
+            {(['like', 'dislike'] as const).map((r) => {
+              const key = outfitKey(o.pieces)
+              const on = ratings.some((x) => x.key === key && x.rating === r)
+              return (
+                <button
+                  key={r}
+                  className={on ? 'chip on' : 'chip'}
+                  aria-pressed={on}
+                  onClick={() => onRate({ key, rating: r, date: wearDate, dayTypeId: ctx.dayTypeId, title: `${o.title} · ${o.mood}`, codes: wornCodes(o) })}
+                >
+                  {r === 'like' ? '👍 Like' : '👎 Dislike'}
+                </button>
+              )
+            })}
+            </div>
           </article>
         ))}
       </div>

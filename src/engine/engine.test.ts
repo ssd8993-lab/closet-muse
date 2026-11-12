@@ -123,3 +123,18 @@ test('only extras can be removed, and only when the rules still hold', { skip: !
   assert.ok(removable > 0)
   console.log(`removable extras: ${removable}; layers kept by the rules: ${blocked}`)
 })
+
+import { outfitKey } from './compose.ts'
+
+test('a disliked outfit never comes back; a liked one scores higher', { skip: !existsSync('public/closet-data/closet.json') }, () => {
+  const pieces: Piece[] = JSON.parse(readFileSync('public/closet-data/closet.json', 'utf8')).pieces
+  const ctx = ctxFor('wfh', ['casual', 'smart'], 2, false)
+  const base = buildOutfits({ pieces, ctx, seed: 'rate' }).outfits
+  const bad = outfitKey(base[0].pieces)
+  for (let i = 0; i < 6; i++) {
+    const r = buildOutfits({ pieces, ctx, seed: `rate${i}`, ratings: { [bad]: 'dislike' } })
+    assert.ok(r.outfits.every((o) => outfitKey(o.pieces) !== bad))
+  }
+  const liked = buildOutfits({ pieces, ctx, seed: 'rate', ratings: { [outfitKey(base[1].pieces)]: 'like' } })
+  assert.ok(liked.outfits.length === 3)
+})

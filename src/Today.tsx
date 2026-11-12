@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { DAY_TYPES } from './dayTypes'
 import Outfits from './Outfits'
 import type { WearEntry } from './wearLog'
+import type { RatingEntry } from './ratings'
 import type { DayContext } from './engine/index'
 import { useForecast } from './useForecast'
 import { BOSTON, summarize, typicalForecast, weatherLabel, type DayForecast } from './weather'
@@ -19,7 +20,14 @@ function dayLabel(date: string, index: number): string {
   return new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-export default function Today({ log, onWear }: { log: WearEntry[]; onWear: (e: Omit<WearEntry, 'id'>) => void }) {
+interface TodayProps {
+  log: WearEntry[]
+  onWear: (e: Omit<WearEntry, 'id'>) => void
+  ratings: RatingEntry[]
+  onRate: (e: RatingEntry) => void
+}
+
+export default function Today({ log, onWear, ratings, onRate }: TodayProps) {
   const forecast = useForecast()
   const [selected, setSelected] = useState(0)
   const [dayType, setDayType] = useState<string | null>(null)
@@ -102,7 +110,7 @@ export default function Today({ log, onWear }: { log: WearEntry[]; onWear: (e: O
             ))}
           </div>
 
-          {dayType ? <Outfits ctx={ctx!} log={log} onWear={onWear} /> : <p className="notice">Pick a kind of day to see outfits.</p>}
+          {dayType ? <Outfits ctx={ctx!} log={log} onWear={onWear} ratings={ratings} onRate={onRate} /> : <p className="notice">Pick a kind of day to see outfits.</p>}
         </>
       )}
     </section>
