@@ -99,3 +99,27 @@ test('freshness penalizes recent wear and rewards forgotten pieces', () => {
   assert.ok(freshness(o, { [top.code]: '2026-11-09' }, today) < freshness(o, {}, today))
   assert.ok(freshness(o, { [top.code]: '2026-08-01', [bottom.code]: '2026-08-01' }, today) > 0)
 })
+
+import { canRemove } from './compose.ts'
+
+test('only extras can be removed, and only when the rules still hold', { skip: !existsSync('public/closet-data/closet.json') }, () => {
+  const pieces: Piece[] = JSON.parse(readFileSync('public/closet-data/closet.json', 'utf8')).pieces
+  let removable = 0, blocked = 0
+  for (const w of [1, 2, 3] as const) for (const [id, f] of DAYS) {
+    const ctx = ctxFor(id, f, w, w === 3)
+    for (const o of buildOutfits({ pieces, ctx, seed: 'rm' }).outfits) {
+      for (const role of Object.keys(o.pieces) as (keyof typeof o.pieces)[]) {
+        const ok = canRemove(o.pieces, role, ctx)
+        if (['top', 'bottom', 'onepiece', 'shoes'].includes(role)) assert.equal(ok, false, `${role} must stay`)
+        if (ok) {
+          removable++
+          const next = { ...o.pieces }
+          delete next[role]
+          assert.deepEqual(validateOutfit(next, ctx).errors, [])
+        } else if (['coat', 'light'].includes(role)) blocked++
+      }
+    }
+  }
+  assert.ok(removable > 0)
+  console.log(`removable extras: ${removable}; layers kept by the rules: ${blocked}`)
+})

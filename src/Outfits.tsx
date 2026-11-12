@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { alternatives, buildOutfits, piecesOf, restyle, ROLE_ORDER, type DayContext, type OutfitPieces } from './engine/index'
+import { alternatives, buildOutfits, canRemove, piecesOf, restyle, ROLE_ORDER, type DayContext, type OutfitPieces } from './engine/index'
 import { cutoutUrl, useCloset } from './useCloset'
 import type { Piece } from './types'
 import { DAY_TYPES } from './dayTypes'
@@ -100,16 +100,17 @@ export default function Outfits({ ctx, log, onWear }: Props) {
               {ROLE_ORDER.filter((r) => o.pieces[r]).map((r) => {
                 const p = o.pieces[r]!
                 const open = picker?.id === o.id && picker.role === r
+                const extra = canRemove(o.pieces, r, ctx)
                 return (
                   <li key={r}>
                     <span>{p.item} ({p.code})</span>
                     <button
                       className="swap"
                       aria-expanded={open}
-                      aria-label={`Swap ${ROLE_NAME[r]} in option ${o.id}`}
+                      aria-label={`${extra ? 'Swap or remove' : 'Swap'} ${ROLE_NAME[r]} in option ${o.id}`}
                       onClick={() => setPicker(open ? null : { id: o.id, role: r })}
                     >
-                      Swap
+                      {extra ? 'Swap or remove' : 'Swap'}
                     </button>
                   </li>
                 )
@@ -117,6 +118,20 @@ export default function Outfits({ ctx, log, onWear }: Props) {
             </ul>
             {picker?.id === o.id && (
               <div className="picker" role="group" aria-label={`Other ${ROLE_NAME[picker.role]} options`}>
+                {canRemove(o.pieces, picker.role, ctx) && (
+                  <button
+                    className="alt remove"
+                    onClick={() => {
+                      const next = { ...o.pieces }
+                      delete next[picker.role]
+                      setSwaps((s) => ({ ...s, [o.id]: next }))
+                      setPicker(null)
+                    }}
+                  >
+                    <span className="thumb"><span className="placeholder">✕</span></span>
+                    <span className="alt-name">Leave off the {ROLE_NAME[picker.role]}</span>
+                  </button>
+                )}
                 {options.length === 0 && <p className="notice">No other {ROLE_NAME[picker.role]} fits the rules for this day.</p>}
                 {options.map((p) => {
                   const url = cutoutUrl(p)

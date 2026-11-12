@@ -306,3 +306,13 @@ export function alternatives(
   }
   return ranked.sort((a, b) => b.score - a.score).slice(0, limit).map((r) => r.p)
 }
+
+const REMOVABLE: (keyof OutfitPieces)[] = ['coat', 'light', 'legwear', 'bag', 'accessory']
+
+/** Can this piece simply be left off? Only extras, and only when every rule still holds without it. */
+export function canRemove(current: OutfitPieces, role: keyof OutfitPieces, ctx: DayContext): boolean {
+  if (!REMOVABLE.includes(role) || !current[role]) return false
+  const next = { ...current }
+  delete next[role]
+  return validateOutfit(next, ctx).errors.length === 0
+}
