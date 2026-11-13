@@ -82,14 +82,14 @@ export default function Today({ log, onWear, ratings, onRate }: TodayProps) {
 
           <article className="weather" aria-label={`Weather for ${BOSTON.name}`}>
             <div className="temps">
-              <span className="big">{day.high}°</span>
-              <span className="lo">low {day.low}°</span>
+              <span className="big">{day.high}°C</span>
+              <span className="lo">low {day.low}°C</span>
             </div>
             <dl className="facts">
               <div><dt>Sky</dt><dd>{day.typical ? 'Typical for the month' : weatherLabel(day.code)}</dd></div>
-              <div><dt>Feels like</dt><dd>{day.feelsLow}° to {day.feelsHigh}°</dd></div>
+              <div><dt>Feels like</dt><dd>{day.feelsLow}° to {day.feelsHigh}°C</dd></div>
               <div><dt>Rain chance</dt><dd>{day.rainChance}%</dd></div>
-              <div><dt>Wind</dt><dd>up to {day.wind} mph</dd></div>
+              <div><dt>Wind</dt><dd>up to {day.wind} km/h</dd></div>
             </dl>
             <ul className="advice">
               {summary.advice.map((a) => <li key={a}>{a}</li>)}

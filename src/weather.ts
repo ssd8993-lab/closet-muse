@@ -5,14 +5,14 @@ export const BOSTON = { name: 'Boston, MA', latitude: 42.3601, longitude: -71.05
 
 /** Tunable cut-offs. Warmth uses the closet scale: 1 = summer, 2 = cool, 3 = cold Boston day. */
 export const THRESHOLDS = {
-  /** Feels-like high at or below this (°F) is a cold day: warmth 3. */
-  coldFeelsHigh: 50,
-  /** Feels-like high at or below this (°F) is a cool day: warmth 2. Above it: warmth 1. */
-  coolFeelsHigh: 68,
+  /** Feels-like high at or below this (°C) is a cold day: warmth 3. */
+  coldFeelsHigh: 10,
+  /** Feels-like high at or below this (°C) is a cool day: warmth 2. Above it: warmth 1. */
+  coolFeelsHigh: 20,
   /** Rain chance (%) at or above this counts as rain likely. */
   rainChance: 40,
-  /** Wind (mph) at or above this counts as windy. */
-  windMph: 20,
+  /** Wind (km/h) at or above this counts as windy. */
+  windKmh: 32,
 }
 
 export interface DayForecast {
@@ -24,7 +24,7 @@ export interface DayForecast {
   feelsLow: number
   /** Chance of rain, percent. */
   rainChance: number
-  /** Top wind speed, mph. */
+  /** Top wind speed, km/h. */
   wind: number
   /** WMO weather code. */
   code: number
@@ -64,8 +64,8 @@ export function forecastUrl(days = 7): string {
       'wind_speed_10m_max',
       'weather_code',
     ].join(','),
-    temperature_unit: 'fahrenheit',
-    wind_speed_unit: 'mph',
+    temperature_unit: 'celsius',
+    wind_speed_unit: 'kmh',
     timezone: 'America/New_York',
     forecast_days: String(days),
   })
@@ -93,9 +93,9 @@ export async function fetchForecast(signal?: AbortSignal): Promise<DayForecast[]
   return parseForecast(await res.json())
 }
 
-// Approximate typical Boston highs and lows (°F) by month, January first.
-const TYPICAL_HIGH = [37, 39, 46, 57, 67, 77, 83, 81, 74, 63, 53, 42]
-const TYPICAL_LOW = [24, 26, 33, 42, 52, 62, 68, 67, 60, 49, 40, 31]
+// Approximate typical Boston highs and lows (°C) by month, January first.
+const TYPICAL_HIGH = [3, 4, 8, 14, 19, 25, 28, 27, 23, 17, 12, 6]
+const TYPICAL_LOW = [-4, -3, 1, 6, 11, 17, 20, 19, 16, 9, 4, -1]
 
 /** Used when no forecast can be loaded: typical weather for that month. */
 export function typicalForecast(date: string): DayForecast {
@@ -109,7 +109,7 @@ export function typicalForecast(date: string): DayForecast {
     feelsHigh: high,
     feelsLow: low,
     rainChance: 30,
-    wind: 12,
+    wind: 20,
     code: 2,
     typical: true,
   }
@@ -119,7 +119,7 @@ export function summarize(f: DayForecast): WeatherSummary {
   const warmth: 1 | 2 | 3 =
     f.feelsHigh <= THRESHOLDS.coldFeelsHigh ? 3 : f.feelsHigh <= THRESHOLDS.coolFeelsHigh ? 2 : 1
   const rainLikely = f.rainChance >= THRESHOLDS.rainChance
-  const windy = f.wind >= THRESHOLDS.windMph
+  const windy = f.wind >= THRESHOLDS.windKmh
 
   const advice: string[] = []
   advice.push(

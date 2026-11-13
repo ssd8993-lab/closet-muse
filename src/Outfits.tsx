@@ -67,7 +67,7 @@ export default function Outfits({ ctx, log, onWear, ratings, onRate }: Props) {
 
   async function makeImage() {
     setBusy(true)
-    const title = `${occasion}, ${ctx.temp}° ${ctx.sky} — ${outfits.length} options`
+    const title = `${occasion}, ${ctx.temp}°C ${ctx.sky} — ${outfits.length} options`
     const canvas = await renderFlatlay(outfits, title, cutoutUrl)
     setImage({ url: canvas.toDataURL('image/png'), name: flatlayFilename(wearDate, occasion, outfits.length) })
     setBusy(false)

@@ -212,7 +212,7 @@ function titleOf(o: OutfitPieces): string {
 }
 
 function noteOf(o: OutfitPieces, kind: Kind, ctx: DayContext): string {
-  const weather = `${ctx.dayLabel} ${DAY_WORD[ctx.dayTypeId] ?? ''}, ${ctx.temp}° and ${ctx.sky}`.replace(/\s+,/, ',')
+  const weather = `${ctx.dayLabel} ${DAY_WORD[ctx.dayTypeId] ?? ''}, ${ctx.temp}°C and ${ctx.sky}`.replace(/\s+,/, ',')
   const layers = o.coat && o.light ? 'with a warm layer under the coat' : o.coat ? 'with a coat on top' : o.light ? 'with a light layer you can drop indoors' : 'with no layers needed'
   const rain = ctx.rainLikely ? ' Shoes and bag are rain-safe.' : ctx.windy ? ' Fastened layers keep the wind out.' : ''
   const how = {

@@ -30,6 +30,6 @@ test('real closet: no overlap, everything inside its column and above the captio
 })
 
 test('blurb is about 20 words', () => {
-  const o = { note: 'Today, 44° and rain. An easy go-to that needs no thought, with a warm layer under the coat. Shoes and bag are rain-safe.' } as never
+  const o = { note: 'Today, 7°C and rain. An easy go-to that needs no thought, with a warm layer under the coat. Shoes and bag are rain-safe.' } as never
   assert.ok(blurbOf(o).split(' ').length <= 21)
 })
