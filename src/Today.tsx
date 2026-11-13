@@ -5,7 +5,9 @@ import type { WearEntry } from './wearLog'
 import type { RatingEntry } from './ratings'
 import type { DayContext } from './engine/index'
 import { useForecast } from './useForecast'
-import { BOSTON, summarize, typicalForecast, weatherLabel, type DayForecast } from './weather'
+import PlacePicker from './PlacePicker'
+import { BOSTON, addPlace, allPlaces, loadSaved, loadSelected, removePlace, saveSaved, saveSelected } from './places'
+import { summarize, typicalForecast, weatherLabel, type DayForecast } from './weather'
 
 /** Local calendar date as YYYY-MM-DD. */
 function isoDate(d: Date): string {
@@ -28,7 +30,18 @@ interface TodayProps {
 }
 
 export default function Today({ log, onWear, ratings, onRate }: TodayProps) {
-  const forecast = useForecast()
+  const [saved, setSaved] = useState(() => loadSaved())
+  const [place, setPlace] = useState(() => loadSelected(loadSaved()))
+  const [attempt, setAttempt] = useState(0)
+  const forecast = useForecast(place, attempt)
+  const places = allPlaces(saved)
+  const choose = (id: string) => {
+    const next = places.find((p) => p.id === id)
+    if (!next) return
+    setPlace(next)
+    saveSelected(id)
+    setSelected(0)
+  }
   const [selected, setSelected] = useState(0)
   const [dayType, setDayType] = useState<string | null>(null)
 
@@ -36,10 +49,10 @@ export default function Today({ log, onWear, ratings, onRate }: TodayProps) {
 
   // Real forecast days when we have them; otherwise just today, with typical weather.
   const days: DayForecast[] = useMemo(
-    () => (forecast.status === 'ready' ? forecast.days : [typicalForecast(today)]),
-    [forecast, today],
+    () => (forecast.status === 'ready' ? forecast.days : forecast.status === 'failed' && place.id === BOSTON.id ? [typicalForecast(today)] : []),
+    [forecast, today, place.id],
   )
-  const day = days[Math.min(selected, days.length - 1)]
+  const day = days[Math.min(selected, days.length - 1)] ?? typicalForecast(today)
   const summary = summarize(day)
   const dt = DAY_TYPES.find((d) => d.id === dayType)
   const ctx: DayContext | null = useMemo(
@@ -56,14 +69,40 @@ export default function Today({ log, onWear, ratings, onRate }: TodayProps) {
     <section aria-labelledby="today-heading">
       <h2 id="today-heading" className="section">Today</h2>
 
-      {forecast.status === 'loading' && <p className="notice">Loading the {BOSTON.name} forecast…</p>}
-      {forecast.status === 'failed' && (
+      <PlacePicker
+        places={places}
+        selectedId={place.id}
+        onSelect={choose}
+        onAdd={(p) => {
+          const next = addPlace(saved, p)
+          setSaved(next)
+          saveSaved(next)
+          setPlace(p)
+          saveSelected(p.id)
+          setSelected(0)
+        }}
+        onRemove={(id) => {
+          const next = removePlace(saved, id)
+          setSaved(next)
+          saveSaved(next)
+          if (place.id === id) choose(BOSTON.id)
+        }}
+      />
+
+      {forecast.status === 'loading' && <p className="notice">Loading the {place.name} forecast…</p>}
+      {forecast.status === 'failed' && place.id === BOSTON.id && (
         <p className="notice" role="status">
-          Couldn't load the forecast, so this plans for typical {BOSTON.name} weather this month.
+          Couldn't load the forecast, so this plans for typical {place.name} weather this month.
+        </p>
+      )}
+      {forecast.status === 'failed' && place.id !== BOSTON.id && (
+        <p className="notice" role="status">
+          Couldn't load the forecast for {place.name}.{' '}
+          <button className="swap" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
         </p>
       )}
 
-      {forecast.status !== 'loading' && (
+      {days.length > 0 && forecast.status !== 'loading' && (
         <>
           {days.length > 1 && (
             <div className="chips" role="group" aria-label="Day">
@@ -80,7 +119,7 @@ export default function Today({ log, onWear, ratings, onRate }: TodayProps) {
             </div>
           )}
 
-          <article className="weather" aria-label={`Weather for ${BOSTON.name}`}>
+          <article className="weather" aria-label={`Weather for ${place.name}`}>
             <div className="temps">
               <span className="big">{day.high}°C</span>
               <span className="lo">low {day.low}°C</span>

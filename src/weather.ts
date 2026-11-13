@@ -1,7 +1,9 @@
 // Forecast loading and the "what does this weather mean for dressing" rules.
 // Forecast source: Open-Meteo (free, no key).
 
-export const BOSTON = { name: 'Boston, MA', latitude: 42.3601, longitude: -71.0589 }
+import { BOSTON, type Place } from './places.ts'
+
+export { BOSTON }
 
 /** Tunable cut-offs. Warmth uses the closet scale: 1 = summer, 2 = cool, 3 = cold Boston day. */
 export const THRESHOLDS = {
@@ -51,10 +53,10 @@ interface OpenMeteoDaily {
   weather_code: number[]
 }
 
-export function forecastUrl(days = 7): string {
+export function forecastUrl(place: Place = BOSTON, days = 7): string {
   const p = new URLSearchParams({
-    latitude: String(BOSTON.latitude),
-    longitude: String(BOSTON.longitude),
+    latitude: String(place.latitude),
+    longitude: String(place.longitude),
     daily: [
       'temperature_2m_max',
       'temperature_2m_min',
@@ -66,7 +68,7 @@ export function forecastUrl(days = 7): string {
     ].join(','),
     temperature_unit: 'celsius',
     wind_speed_unit: 'kmh',
-    timezone: 'America/New_York',
+    timezone: place.timezone,
     forecast_days: String(days),
   })
   return `https://api.open-meteo.com/v1/forecast?${p.toString()}`
@@ -87,8 +89,8 @@ export function parseForecast(json: { daily?: OpenMeteoDaily }): DayForecast[] {
   }))
 }
 
-export async function fetchForecast(signal?: AbortSignal): Promise<DayForecast[]> {
-  const res = await fetch(forecastUrl(), { signal })
+export async function fetchForecast(place: Place = BOSTON, signal?: AbortSignal): Promise<DayForecast[]> {
+  const res = await fetch(forecastUrl(place), { signal })
   if (!res.ok) throw new Error(`Forecast request failed (${res.status})`)
   return parseForecast(await res.json())
 }
